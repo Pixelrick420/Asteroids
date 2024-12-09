@@ -16,9 +16,10 @@ const float MAX_SPEED = 1.5;
 const float RESISTANCE = 0.008;
 const int COOLDOWN = 10;
 const int MAX_ASTEROID_SIZE = 30;
-const int SPAWN_GAP = 200;
+const int PIXELRICK = 21268;
 
-int nextSpawn = SPAWN_GAP;
+float spawnGap = 200;
+int nextSpawn = spawnGap;
 float scoreMultiplier = 1;
 int fired = 0;
 SDL_KeyCode keys[] = {SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT};
@@ -98,7 +99,7 @@ bool isValidSpawn(Player *player, float x, float y, float size)
 
     float dx = player->position.x - x;
     float dy = player->position.y - y;
-    if (std::sqrt((dx * dx) + (dy * dy)) < size + 5)
+    if (std::sqrt((dx * dx) + (dy * dy)) < size + 15)
     {
         return false;
     }
@@ -142,12 +143,20 @@ void reset(Screen *screen, Player *player)
     asteroids.clear();
     bullets.clear();
     player->angle = 0;
+    if (player->score > PIXELRICK)
+    {
+        std::cout << "You should consider touching some grass\n";
+    }
     player->score = 0;
     player->speed = 0;
     player->position = {200, 200};
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 4; i++)
     {
         asteroids.push_back(createAsteroid(player));
+    }
+    for (SDL_Keycode code : keys)
+    {
+        isPressed[code] = false;
     }
     showStartMenu(screen, player);
 }
@@ -328,7 +337,7 @@ void drawAsteroids(Screen *screen, Player *player)
     }
 }
 
-void drawImage(Screen *screen, float x, float y)
+void drawTitleScreen(Screen *screen, float x, float y)
 {
     const std::string filename = "TitleScreen.bin";
     const int width = 862;
@@ -388,7 +397,11 @@ void handleInput(Screen *screen, Player *player)
     nextSpawn--;
     if (nextSpawn <= 0)
     {
-        nextSpawn = SPAWN_GAP;
+        nextSpawn = spawnGap;
+        if (spawnGap < 100)
+        {
+            spawnGap -= 0.5;
+        }
         asteroids.push_back(createAsteroid(player));
     }
     while (SDL_PollEvent(&screen->e))
@@ -480,7 +493,7 @@ void showStartMenu(Screen *screen, Player *player)
         clear(screen);
         drawAsteroids(screen, player);
         nextSpawn++;
-        drawImage(screen, 100, 100);
+        drawTitleScreen(screen, 100, 100);
         show(screen);
 
         while (SDL_PollEvent(&screen->e))
@@ -513,17 +526,7 @@ int main(int argc, char *argv[])
     Screen *screen = createScreen();
     Player *player = createPlayer();
 
-    showStartMenu(screen, player);
-
-    for (int i = 0; i < 5; i++)
-    {
-        asteroids.push_back(createAsteroid(player));
-    }
-
-    for (SDL_Keycode code : keys)
-    {
-        isPressed[code] = false;
-    }
+    reset(screen, player);
 
     while (true)
     {
