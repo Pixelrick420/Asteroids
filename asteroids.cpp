@@ -137,6 +137,7 @@ void reset(Screen *screen, Player *player)
     asteroids.clear();
     bullets.clear();
     player->angle = 0;
+    player->score = 0;
     player->speed = 0;
     player->position = {200, 200};
     for (int i = 0; i < 5; i++)
@@ -264,6 +265,7 @@ void drawAsteroids(Screen *screen, Player *player)
 
         if ((std::sqrt((dx * dx) + (dy * dy))) <= (asteroids[i]->size * 1.1))
         {
+            std::cout << player->score << "\n";
             reset(screen, player);
         }
 
