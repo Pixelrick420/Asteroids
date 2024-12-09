@@ -39,7 +39,9 @@ Finally, run the program using:
 ```
 
 Alternatively, you can download and unzip asteroids.zip and compile using :
-```g++ -Isrc/Include -Lsrc/lib -o asteroids asteroids.cpp -lmingw32 -lSDL2main -lSDL2```
+```
+g++ -Isrc/Include -Lsrc/lib -o asteroids asteroids.cpp -lmingw32 -lSDL2main -lSDL2
+```
 Then run the program using:
 ```
 ./asteroids
