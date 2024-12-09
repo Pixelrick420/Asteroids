@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <map>
 #include <iostream>
+#include <fstream>
 
 const int SCREEN_HEIGHT = 360;
 const int SCREEN_WIDTH = 640;
@@ -12,10 +13,13 @@ const float PI = 3.1415926536;
 const float PLAYER_LENGTH = 25;
 const float PLAYER_WIDTH = 20;
 const float MAX_SPEED = 1.5;
-const float RESISTANCE = 0.01;
+const float RESISTANCE = 0.008;
 const int COOLDOWN = 10;
 const int MAX_ASTEROID_SIZE = 30;
+const int SPAWN_GAP = 200;
 
+int nextSpawn = SPAWN_GAP;
+float scoreMultiplier = 1;
 int fired = 0;
 SDL_KeyCode keys[] = {SDLK_UP, SDLK_DOWN, SDLK_LEFT, SDLK_RIGHT};
 std::map<SDL_Keycode, bool> isPressed;
@@ -39,9 +43,6 @@ struct Asteroid
     std::vector<Vector2> points;
 };
 
-std::vector<Bullet> bullets;
-std::vector<Asteroid *> asteroids;
-
 struct Player
 {
     int score;
@@ -57,6 +58,10 @@ struct Screen
     SDL_Renderer *renderer;
     std::vector<SDL_FPoint> points;
 };
+
+std::vector<Bullet> bullets;
+std::vector<Asteroid *> asteroids;
+void showStartMenu(Screen *screen, Player *player);
 
 Player *createPlayer()
 {
@@ -144,6 +149,7 @@ void reset(Screen *screen, Player *player)
     {
         asteroids.push_back(createAsteroid(player));
     }
+    showStartMenu(screen, player);
 }
 
 void drawPoint(Screen *screen, float x, float y)
@@ -239,7 +245,9 @@ void drawBullets(Screen *screen, Player *player)
                         asteroids.push_back(createAsteroid(player, asteroids[j]->position.x, asteroids[j]->position.y, asteroids[j]->size * 0.5));
                     }
                 }
-                player->score += asteroids[j]->size;
+                player->score += asteroids[j]->size * scoreMultiplier;
+                scoreMultiplier += 0.01;
+
                 delete asteroids[j];
                 asteroids.erase(asteroids.begin() + j);
                 j--;
@@ -265,7 +273,7 @@ void drawAsteroids(Screen *screen, Player *player)
 
         if ((std::sqrt((dx * dx) + (dy * dy))) <= (asteroids[i]->size * 1.1))
         {
-            std::cout << player->score << "\n";
+            std::cout << "SCORE : " << player->score << "\n";
             reset(screen, player);
         }
 
@@ -320,6 +328,30 @@ void drawAsteroids(Screen *screen, Player *player)
     }
 }
 
+void drawImage(Screen *screen, float x, float y)
+{
+    const std::string filename = "TitleScreen.bin";
+    const int width = 862;
+    const int height = 303;
+    std::ifstream file(filename, std::ios::binary);
+    std::vector<unsigned char> pixels(width * height);
+    file.read(reinterpret_cast<char *>(pixels.data()), width * height);
+    float cury = y;
+    for (int i = 0; i < height; i++)
+    {
+        float curx = x;
+        for (int j = 0; j < width; j++)
+        {
+            if (pixels[i * width + j] > 90)
+            {
+                drawPoint(screen, curx, cury);
+            }
+            curx += 0.5;
+        }
+        cury += 0.5;
+    }
+}
+
 void drawGame(Screen *screen, Player *player)
 {
     drawPlayer(screen, player);
@@ -353,6 +385,12 @@ void freeScreen(Screen *screen)
 
 void handleInput(Screen *screen, Player *player)
 {
+    nextSpawn--;
+    if (nextSpawn <= 0)
+    {
+        nextSpawn = SPAWN_GAP;
+        asteroids.push_back(createAsteroid(player));
+    }
     while (SDL_PollEvent(&screen->e))
     {
         if (screen->e.type == SDL_QUIT)
@@ -428,10 +466,54 @@ void handleInput(Screen *screen, Player *player)
     }
 }
 
+void showStartMenu(Screen *screen, Player *player)
+{
+    player->position.x = 1000;
+    player->position.y = 1000;
+    for (int i = 0; i < 10; i++)
+    {
+        asteroids.push_back(createAsteroid(player, -1, -1, rand() % 20 + 10));
+    }
+
+    while (true)
+    {
+        clear(screen);
+        drawAsteroids(screen, player);
+        nextSpawn++;
+        drawImage(screen, 100, 100);
+        show(screen);
+
+        while (SDL_PollEvent(&screen->e))
+        {
+            if (screen->e.type == SDL_QUIT)
+            {
+                freeScreen(screen);
+                SDL_Quit();
+                exit(0);
+            }
+            else if (screen->e.type == SDL_KEYDOWN && screen->e.key.keysym.sym == SDLK_SPACE)
+            {
+                for (Asteroid *a : asteroids)
+                {
+                    delete a;
+                }
+                asteroids.clear();
+                player->position.x = 200;
+                player->position.y = 200;
+                return;
+            }
+        }
+
+        SDL_Delay(10);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     Screen *screen = createScreen();
     Player *player = createPlayer();
+
+    showStartMenu(screen, player);
 
     for (int i = 0; i < 5; i++)
     {
