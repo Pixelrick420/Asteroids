@@ -16,7 +16,7 @@ const float MAX_SPEED = 1.5;
 const float RESISTANCE = 0.008;
 const int COOLDOWN = 10;
 const int MAX_ASTEROID_SIZE = 30;
-const int PIXELRICK = 21268;
+const int PIXELRICK = 43833;
 
 float spawnGap = 200;
 int nextSpawn = spawnGap;
@@ -46,7 +46,7 @@ struct Asteroid
 
 struct Player
 {
-    int score;
+    unsigned int score;
     Vector2 position;
     float angle, speed;
     Vector2 points[3];
@@ -63,6 +63,7 @@ struct Screen
 std::vector<Bullet> bullets;
 std::vector<Asteroid *> asteroids;
 void showStartMenu(Screen *screen, Player *player);
+void showGameOver(Screen *screen, Player *player);
 
 Player *createPlayer()
 {
@@ -123,12 +124,13 @@ Asteroid *createAsteroid(Player *player, float x = -1, float y = -1, float size 
     asteroid->speed = (rand() % 10 + 1) * 0.1;
     asteroid->faceAngle = PI / 2;
     asteroid->moveAngle = (2 * PI) * ((rand()) % 100) * 0.01;
+    float points = 20;
     float angle = 0;
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < points; i++)
     {
         Vector2 point;
-        float randomFactor = 0.80 + (rand() % 40) / 100.0;
-        angle += (2 * PI) * 0.1 * ((randomFactor > 1) ? 1 : randomFactor);
+        float randomFactor = 0.90 + (rand() % 20) / 100.0;
+        angle += (2 * PI) * (1 / points) * ((randomFactor > 1) ? 1 : randomFactor);
         point.x = std::cos(angle) * asteroid->size * randomFactor;
         point.y = std::sin(angle) * asteroid->size * randomFactor;
         asteroid->points.push_back(point);
@@ -283,7 +285,7 @@ void drawAsteroids(Screen *screen, Player *player)
         if ((std::sqrt((dx * dx) + (dy * dy))) <= (asteroids[i]->size * 1.1))
         {
             std::cout << "SCORE : " << player->score << "\n";
-            reset(screen, player);
+            showGameOver(screen, player);
         }
 
         std::vector<Vector2> transformed(a->points.size());
@@ -358,6 +360,24 @@ void drawTitleScreen(Screen *screen, float x, float y)
             curx += 0.5;
         }
         cury += 0.5;
+    }
+}
+
+void drawEndScreen(Screen *screen)
+{
+    const std::string filename = "EndScreen.bin";
+    std::ifstream file(filename, std::ios::binary);
+    std::vector<unsigned char> pixels(SCREEN_HEIGHT * SCREEN_WIDTH);
+    file.read(reinterpret_cast<char *>(pixels.data()), SCREEN_HEIGHT * SCREEN_WIDTH);
+    for (int i = 0; i < SCREEN_HEIGHT; i++)
+    {
+        for (int j = 0; j < SCREEN_WIDTH; j++)
+        {
+            if (pixels[i * SCREEN_WIDTH + j] > 90)
+            {
+                drawPoint(screen, j, i);
+            }
+        }
     }
 }
 
@@ -476,6 +496,47 @@ void handleInput(Screen *screen, Player *player)
     if (player->speed > 0)
     {
         player->speed -= RESISTANCE;
+    }
+}
+
+void showGameOver(Screen *screen, Player *player)
+{
+    player->position.x = 1000;
+    player->position.y = 1000;
+    for (int i = 0; i < 10; i++)
+    {
+        asteroids.push_back(createAsteroid(player, -1, -1, rand() % 20 + 10));
+    }
+
+    while (true)
+    {
+        clear(screen);
+        drawAsteroids(screen, player);
+        nextSpawn++;
+        drawEndScreen(screen);
+        show(screen);
+
+        while (SDL_PollEvent(&screen->e))
+        {
+            if (screen->e.type == SDL_QUIT)
+            {
+                freeScreen(screen);
+                SDL_Quit();
+                exit(0);
+            }
+            else if (screen->e.type == SDL_KEYDOWN && screen->e.key.keysym.sym == SDLK_SPACE)
+            {
+                for (Asteroid *a : asteroids)
+                {
+                    delete a;
+                }
+                asteroids.clear();
+                reset(screen, player);
+                return;
+            }
+        }
+
+        SDL_Delay(10);
     }
 }
 
